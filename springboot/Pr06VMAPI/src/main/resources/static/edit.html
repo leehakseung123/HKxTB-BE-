@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>자판기 상품 수정</title>
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .vm-container {
+      width: 400px;
+      margin: 40px auto;
+      border: 2px solid #000;
+      background-color: #B11818;
+      color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      font-family: sans-serif;
+      position: relative;
+    }
+    .vm-header {
+      background-color: #fff;
+      color: #B11818;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      border-radius: 4px;
+      justify-content: space-between;
+    }
+    .program-title {
+      font-size: 1rem;
+      margin: 0;
+    }
+    label {
+      color: #fff;
+    }
+    input[type="text"],
+    input[type="date"] {
+      background-color: #fff;
+      color: #000;
+    }
+    .btn-black {
+      background-color: #000;
+      color: #fff;
+      border: none;
+      margin-right: 10px;
+      padding: 8px 16px;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+    .btn-back {
+      background-color: #fff;
+      color: #000;
+      border: 1px solid #000;
+      padding: 8px 16px;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<div class="vm-container">
+  <!-- 헤더바 + 언어 토글 -->
+  <div class="vm-header">
+    <h3 id="titleText" class="program-title">★ 상품 수정 ★</h3>
+    <div style="display: flex; align-items: center;">
+      <span id="langLeft" style="color: #B11818;">KOR</span>
+      <label class="mx-2 relative inline-flex items-center cursor-pointer">
+        <input type="checkbox" id="langSwitch" class="sr-only peer" />
+        <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700
+                    peer-checked:after:translate-x-full
+                    peer-checked:after:border-white after:content-[''] after:absolute
+                    after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300
+                    after:border after:rounded-full after:h-4 after:w-4 after:transition-all
+                    peer-checked:bg-blue-600"></div>
+      </label>
+      <span id="langRight" style="color: #B11818;">ENG</span>
+    </div>
+  </div>
+
+  <form id="editForm">
+    <input type="hidden" id="editId" />
+    <div class="mb-3">
+      <label id="lblName" class="block mb-1">상품명</label>
+      <input type="text" id="editName" class="w-full p-2 rounded" required />
+    </div>
+    <div class="mb-3">
+      <label id="lblDate" class="block mb-1">유통기한</label>
+      <input type="date" id="editDate" class="w-full p-2 rounded" required />
+    </div>
+    <div class="mt-4">
+      <button type="submit" class="btn-black" id="btnSubmit">상품 수정 완료!</button>
+      <button type="button" class="btn-back" id="btnBack">돌아가기</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // 번역
+  const translations = {
+    ko: {
+      title: "★ 상품 수정 ★",
+      lblName: "상품명",
+      lblDate: "유통기한",
+      btnSubmit: "상품 수정 완료!",
+      btnBack: "돌아가기",
+      addMsg: "상품이 추가되었습니다!", // (add 페이지 전용)
+      editMsg: "상품이 수정되었습니다!" // (edit에서 사용)
+    },
+    en: {
+      title: "★ Edit Product ★",
+      lblName: "Product Name",
+      lblDate: "Expiration",
+      btnSubmit: "Update Complete!",
+      btnBack: "Go Back",
+      addMsg: "Product Added!",
+      editMsg: "Product Updated!"
+    }
+  };
+  let currentLang = "ko";
+
+  const API_URL = "http://localhost:8080/api/products";
+
+  const titleText = document.getElementById("titleText");
+  const langSwitch = document.getElementById("langSwitch");
+  const langLeft = document.getElementById("langLeft");
+  const langRight = document.getElementById("langRight");
+
+  const lblName = document.getElementById("lblName");
+  const lblDate = document.getElementById("lblDate");
+  const btnSubmit = document.getElementById("btnSubmit");
+  const btnBack = document.getElementById("btnBack");
+
+  const editForm = document.getElementById("editForm");
+  const editId = document.getElementById("editId");
+  const editName = document.getElementById("editName");
+  const editDate = document.getElementById("editDate");
+
+  // 언어 업데이트
+  function updateLanguage() {
+    const t = translations[currentLang];
+    titleText.textContent = t.title;
+    lblName.textContent = t.lblName;
+    lblDate.textContent = t.lblDate;
+    btnSubmit.textContent = t.btnSubmit;
+    btnBack.textContent = t.btnBack;
+
+    langLeft.textContent = currentLang === "ko" ? "KOR" : "ENG";
+    langRight.textContent = currentLang === "ko" ? "ENG" : "KOR";
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    updateLanguage();
+    loadProduct();
+  });
+
+  langSwitch.addEventListener("change", () => {
+    currentLang = langSwitch.checked ? "en" : "ko";
+    updateLanguage();
+  });
+
+  function loadProduct() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const productId = urlParams.get("productId");
+    if(!productId) {
+      alert("상품 ID가 없습니다.");
+      return;
+    }
+    fetch(`${API_URL}/${productId}`)
+            .then(res => res.json())
+            .then(data => {
+              if(data) {
+                editId.value = data.productId;
+                editName.value = data.name;
+                editDate.value = data.limitDate;
+              } else {
+                alert("해당 상품을 찾을 수 없습니다.");
+              }
+            })
+            .catch(err => console.error(err));
+  }
+
+  editForm.addEventListener("submit", e => {
+    e.preventDefault();
+    const t = translations[currentLang];
+
+    const id = editId.value;
+    const name = editName.value;
+    const date = editDate.value;
+
+    fetch(`${API_URL}/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, limitDate: date })
+    })
+            .then(res => res.json())
+            .then(updated => {
+              alert(t.editMsg); // "상품이 수정되었습니다!" or "Product Updated!"
+              window.location.href = "index.html";
+            })
+            .catch(err => console.error(err));
+  });
+
+  btnBack.addEventListener("click", () => {
+    window.location.href = "index.html";
+  });
+</script>
+</body>
+</html>

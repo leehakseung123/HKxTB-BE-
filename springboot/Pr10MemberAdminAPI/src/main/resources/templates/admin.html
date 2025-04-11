@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <title>관리자 페이지</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+<div class="container-fluid p-4" style="background-color: #eee">
+  <div class="row">
+    <div class="container-fluid" style="background-color: white; max-width: 1200px; border-radius: 20px;">
+      <h1 class="my-5 text-center">관리자페이지 - 회원목록</h1>
+
+      <table class="table table-striped">
+        <tr>
+          <th>번호</th>
+          <th>아이디</th>
+          <th>암호</th>
+          <th>이메일</th>
+          <th>가입일</th>
+          <th class="text-center">수정</th>
+          <th class="text-center">삭제</th>
+        </tr>
+        <tr th:each="member, stat : ${members}">
+          <td th:text="${stat.index + 1}">1</td>
+          <td th:text="${member.username}">아이디</td>
+          <td th:text="${member.password}">암호</td>
+          <td th:text="${member.email}">이메일</td>
+          <td th:text="${member.joindate}">2024-03-29</td>
+          <td class="text-center">
+            <a th:href="@{'/update-form'(index=${stat.index})}" class="btn btn-danger">수정</a>
+          </td>
+          <td class="text-center">
+            <a th:href="@{'/delete'(index=${stat.index})}" class="btn btn-danger">삭제</a>
+          </td>
+        </tr>
+      </table>
+
+      <div class="text-center my-5">
+        <a href="/" class="btn btn-primary">회원가입</a>
+        <a href="/login-form" class="btn btn-danger">로그인</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function updateMember(index) {
+    const member = {
+      username: document.getElementById("inputName").value,
+      password: document.getElementById("inputPw").value,
+      email: document.getElementById("inputEmail").value,
+      joindate: document.getElementById("inputJoindate").value
+    };
+
+    fetch(`/api/members/${index}`, {
+      method: 'PUT',
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(member)
+    })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'ok') {
+                alert("수정되었습니다.");
+                window.location.href = "/admin";
+              }
+            });
+  }
+  function deleteMember(index) {
+    fetch(`/api/members/${index}`, {
+      method: 'DELETE'
+    })
+            .then(res => res.json())
+            .then(data => {
+              if (data.status === 'ok') {
+                alert("삭제되었습니다.");
+                location.reload();
+              }
+            });
+  }
+
+</script>
+</body>
+</html>

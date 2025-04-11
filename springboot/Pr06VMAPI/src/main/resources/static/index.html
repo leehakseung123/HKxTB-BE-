@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>자판기 프로그램 (목록)</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 빨간 배경 박스 컨테이너 */
+        .vm-container {
+            width: 400px;
+            margin: 40px auto;
+            border: 2px solid #000;
+            background-color: #B11818; /* 빨간 */
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: sans-serif;
+            position: relative;
+        }
+        /* 흰색 헤더 바 */
+        .vm-header {
+            background-color: #fff;
+            color: #B11818;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            border-radius: 4px;
+            justify-content: space-between;
+        }
+        .program-title {
+            font-size: 1rem;
+            margin: 0;
+        }
+        /* 자판기 상품 목록 버튼 */
+        .vm-menu-btn {
+            background-color: #fff;
+            color: #B11818;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        /* 숨김 클래스 */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+<div class="vm-container">
+
+    <!-- 상단 헤더바 (최소화 버튼 X, 대신 언어 토글) -->
+    <div class="vm-header">
+        <h3 id="titleText" class="program-title">★ 자판기 프로그램 ★</h3>
+        <!-- 언어 토글 -->
+        <div style="display: flex; align-items: center;">
+            <span id="langLeft" style="color: #B11818;">KOR</span>
+            <label class="mx-2 relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="langSwitch" class="sr-only peer" />
+                <div class="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer dark:bg-gray-700
+                    peer-checked:after:translate-x-full
+                    peer-checked:after:border-white after:content-[''] after:absolute
+                    after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300
+                    after:border after:rounded-full after:h-4 after:w-4 after:transition-all
+                    peer-checked:bg-blue-600"></div>
+            </label>
+            <span id="langRight" style="color: #B11818;">ENG</span>
+        </div>
+    </div>
+
+    <!-- '자판기 상품 목록' 버튼(형식상) -->
+    <button class="vm-menu-btn" id="menuBtn">▼ 자판기 상품 목록</button>
+
+    <!-- 안내 메시지 -->
+    <div id="noDataMessage"
+         class="bg-white text-red-700 p-2 rounded font-bold text-center mb-2 hidden">
+        상품 목록이 비어있습니다.
+    </div>
+    <div id="countMessage"
+         class="bg-white text-red-700 p-2 rounded font-bold text-center mb-2 hidden">
+        총 0개의 상품이 있습니다.
+    </div>
+
+    <!-- 상품 목록 테이블 -->
+    <table id="productTable" class="w-full bg-white text-black rounded mb-3 hidden">
+        <thead>
+        <tr class="border-b">
+            <th id="colId" class="p-2 border-r">번호</th>
+            <th id="colName" class="p-2 border-r">상품명</th>
+            <th id="colDate" class="p-2 border-r">유통기한</th>
+            <th id="colAction" class="p-2">기능</th>
+        </tr>
+        </thead>
+        <tbody id="productTbody"></tbody>
+    </table>
+
+    <!-- 하단 '상품 추가' 버튼 -->
+    <button
+            class="block mx-auto bg-white text-red-700 border border-red-700 px-4 py-2 rounded font-bold"
+            id="addBtn">
+        상품 추가하기!
+    </button>
+</div>
+
+<script>
+    // =======================
+    // 1) 번역 데이터
+    // =======================
+    const translations = {
+        ko: {
+            title: "★ 자판기 프로그램 ★",
+            menuBtn: "▼ 자판기 상품 목록",
+            noData: "상품 목록이 비어있습니다.",
+            countMsg: (count) => `총 ${count}개의 상품이 있습니다.`,
+            colId: "번호",
+            colName: "상품명",
+            colDate: "유통기한",
+            colAction: "기능",
+            addBtn: "상품 추가하기!",
+            editBtn: "수정",
+            delBtn: "삭제",
+            addMsg: "상품이 추가되었습니다!",
+            editMsg: "상품이 수정되었습니다!",
+            delMsg: "상품이 삭제되었습니다!"
+        },
+        en: {
+            title: "★ Vending Machine ★",
+            menuBtn: "▼ Vending Machine Items",
+            noData: "No products found.",
+            countMsg: (count) => `Total ${count} product(s).`,
+            colId: "ID",
+            colName: "Name",
+            colDate: "Expiration",
+            colAction: "Actions",
+            addBtn: "Add Product!",
+            editBtn: "Edit",
+            delBtn: "Delete",
+            addMsg: "Product Added!",
+            editMsg: "Product Updated!",
+            delMsg: "Product Deleted!"
+        }
+    };
+    let currentLang = "ko"; // 기본: 한글
+
+    const API_URL = "http://localhost:8080/api/products";
+
+    // DOM 요소
+    const langSwitch = document.getElementById("langSwitch");
+    const titleText = document.getElementById("titleText");
+    const menuBtn = document.getElementById("menuBtn");
+    const noDataMessage = document.getElementById("noDataMessage");
+    const countMessage = document.getElementById("countMessage");
+    const addBtn = document.getElementById("addBtn");
+    const colId = document.getElementById("colId");
+    const colName = document.getElementById("colName");
+    const colDate = document.getElementById("colDate");
+    const colAction = document.getElementById("colAction");
+    const productTable = document.getElementById("productTable");
+    const productTbody = document.getElementById("productTbody");
+    const langLeft = document.getElementById("langLeft");
+    const langRight = document.getElementById("langRight");
+
+    // 페이지 로드
+    document.addEventListener("DOMContentLoaded", () => {
+        fetchProducts();
+        updateLanguage(); // 초기 한글
+    });
+
+    // 언어 스위치 이벤트
+    langSwitch.addEventListener("change", () => {
+        currentLang = langSwitch.checked ? "en" : "ko";
+        updateLanguage();
+        fetchProducts(); // 목록 텍스트도 갱신
+    });
+
+    // 언어 적용 함수
+    function updateLanguage() {
+        const t = translations[currentLang];
+        titleText.textContent = t.title;
+        menuBtn.textContent = t.menuBtn;
+        noDataMessage.textContent = t.noData;
+        // countMessage.text는 상품 개수에 따라 동적으로
+        colId.textContent = t.colId;
+        colName.textContent = t.colName;
+        colDate.textContent = t.colDate;
+        colAction.textContent = t.colAction;
+        addBtn.textContent = t.addBtn;
+
+        // 토글 라벨
+        langLeft.textContent = currentLang === "ko" ? "KOR" : "KOR";
+        langRight.textContent = currentLang === "en" ? "ENG" : "ENG";
+    }
+
+    // 상품 목록 가져오기
+    function fetchProducts() {
+        fetch(API_URL)
+            .then(res => res.json())
+            .then(data => renderTable(data))
+            .catch(err => console.error(err));
+    }
+
+    // 테이블 렌더링
+    function renderTable(products) {
+        const t = translations[currentLang];
+        productTbody.innerHTML = "";
+
+        if(!products || products.length === 0) {
+            noDataMessage.classList.remove("hidden");
+            countMessage.classList.remove("hidden");
+            countMessage.textContent = t.countMsg(0);
+            productTable.classList.add("hidden");
+            return;
+        }
+
+        noDataMessage.classList.add("hidden");
+        productTable.classList.remove("hidden");
+        countMessage.classList.remove("hidden");
+        countMessage.textContent = t.countMsg(products.length);
+
+        products.forEach(prod => {
+            const tr = document.createElement("tr");
+            tr.className = "border-b";
+            tr.innerHTML = `
+        <td class="p-2 border-r">${prod.productId}</td>
+        <td class="p-2 border-r">${prod.name}</td>
+        <td class="p-2 border-r">${prod.limitDate}</td>
+        <td class="p-2">
+          <button
+            class="bg-black text-white px-2 py-1 rounded mr-1"
+            onclick="goEdit(${prod.productId})">
+            ${t.editBtn}
+          </button>
+          <button
+            class="bg-white text-black border border-black px-2 py-1 rounded"
+            onclick="deleteProduct(${prod.productId})">
+            ${t.delBtn}
+          </button>
+        </td>
+      `;
+            productTbody.appendChild(tr);
+        });
+    }
+
+    // 추가 버튼 → add.html 이동
+    addBtn.addEventListener("click", () => {
+        window.location.href = "add.html";
+    });
+
+    // 수정 페이지로 이동
+    function goEdit(id) {
+        window.location.href = `edit.html?productId=${id}`;
+    }
+
+    // 삭제 (화면 전환 없이, alert로 결과)
+    function deleteProduct(id) {
+        const t = translations[currentLang];
+        fetch(`${API_URL}/${id}`, { method: "DELETE" })
+            .then(res => res.json())
+            .then(success => {
+                if (success) {
+                    alert(t.delMsg); // "상품이 삭제되었습니다!" 등
+                    fetchProducts(); // 목록 갱신
+                } else {
+                    console.error("삭제 실패!");
+                }
+            })
+            .catch(err => console.error(err));
+    }
+</script>
+</body>
+</html>
